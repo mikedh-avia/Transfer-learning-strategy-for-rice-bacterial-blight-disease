@@ -1,0 +1,55 @@
+import tensorflow as tf
+from tensorflow.python.keras.models import Model
+from tensorflow.python.keras.layers import Input, Dense
+from sklearn.preprocessing import MinMaxScaler
+import pandas as pd
+from sklearn.datasets import load_breast_cancer
+import os
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+
+# 获取数据
+data = pd.read_csv('D:\\白叶枯数据\\ZJ_LY_all_data_with_average_severity-带表头.csv', header=None)
+X_train_df = data.iloc[:, :23].values
+print(X_train_df.shape)
+print(X_train_df)
+# load_boston = load_breast_cancer()
+# df = pd.DataFrame(data=load_boston.data, columns=load_boston.feature_names)
+
+# # 数据预处理，归一化
+scaler = MinMaxScaler()
+df_scales = scaler.fit_transform(X_train_df)
+X_train_df = pd.DataFrame(df_scales)
+# # 直接进行数据输入
+# # X_train_df = pd.DataFrame(df, columns=df.columns)
+#
+print(X_train_df.shape)
+print(X_train_df)
+#
+n_features = X_train_df.shape[1]
+# encoder
+encoder_input = Input(shape=n_features, name='encoder_input')
+encoder_layer1 = Dense(18, activation='relu', name='encoder_layer1')(encoder_input)
+encoder_layer2 = Dense(14, activation='relu', name='encoder_layer2')(encoder_layer1)
+encoder_layer3 = Dense(8, activation='relu', name='encoder_layer3')(encoder_layer2)
+latent_space = Dense(5, activation='relu', name='latent_space')(encoder_layer3)
+# decoder
+decoder_layer1 = Dense(8, activation='relu', name='decoder_layer1')(latent_space)
+decoder_layer2 = Dense(14, activation='relu', name='decoder_layer2')(decoder_layer1)
+decoder_layer3 = Dense(18, activation='relu', name='decoder_layer3')(decoder_layer2)
+output = Dense(n_features, activation='sigmoid', name='Output')(decoder_layer3)
+autoencoder = Model(encoder_input, output, name='Autoencoder')
+autoencoder.compile(optimizer='adam', loss=tf.keras.losses.mean_squared_error)
+autoencoder.summary()
+history = autoencoder.fit(X_train_df, X_train_df, epochs=100, steps_per_epoch=1, verbose=0)
+
+# only the encoder part
+encoder = Model(inputs=encoder_input, outputs=latent_space)
+encoder.compile(optimizer='adam', loss=tf.keras.losses.mean_squared_error)
+X_train_encode = encoder.predict(X_train_df)
+print(X_train_encode.shape[:-1])
+
+result = pd.DataFrame(data=X_train_encode, columns=[f"X{x}" for x in range(1, 6)])
+result.to_csv('C:\\Users\\user\\Desktop\\result.csv', index=True)
+print(result)
+print(result.shape)
